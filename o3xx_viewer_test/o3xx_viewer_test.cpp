@@ -1,63 +1,66 @@
+#include <iostream>
 #include <vector>
 #include <string>
-#include <iostream>
 #include <sstream>
 #include <pmdsdk2.h>
+#include <windows.h>
 
 // on error, prepend absolute path to files before plugin names
 #define SOURCE_PLUGIN "O3D3xxCamera"
-
-// Source Params string format:
-// Ip Address : port Number : XmlRPC port : Application ID (Optional)
-// If no application ID is provided in source params, a new application 
-// is created on connect, and deleted at disconnect.
-//#define CAMERA_IP_1 "192.168.0.69"
-//#define CAMERA_IP_1 "172.29.23.21"
-//
-//#define PCIC_PORT_NUMBER "80"
-//#define XMLRPC_PORT_NUMBER "50010"
-//#define APPLICATION_ID "1"
-//#define SOURCE_PARAM CAMERA_IP_1 ":" PCIC_PORT_NUMBER ":" XMLRPC_PORT_NUMBER 
-//#define SOURCE_PARAM_APP_ID CAMERA_IP_1 ":" PCIC_PORT_NUMBER ":" XMLRPC_PORT_NUMBER ":" APPLICATION_ID 
 
 #define PROC_PLUGIN "O3D3xxProc"
 #define PROC_PARAM ""
 
 // Define length of buffer for response from source command
 #define SOURCE_CMD_BUFFER_LENGTH 256
-// Define length for Clipping Cuboid String
-#define CLIPPING_CUBOID_STRING_LENGTH 1024
 
+/*
+Command Line arguments :
+--IP=IP of camera
+--COUNT=Count to run the data grabbing loop, default value when not specified = 10000
+
+*/
 int main(int argc, char **argv)
 {
 	PMDHandle hnd = 0; // connection handle
-	int res = 0;
 	PMDDataDescription dd;
-	unsigned int integrationTime = 0;
-	std::vector<float> amp;
-	std::vector<float> dist;
-	std::vector<unsigned> flags;
-	std::vector<float> xyz3Dcoordinate;
-	int imgHeight = 0;
-	int imgWidth = 0;
-	char err[256] = { 0 };
 	std::string command = "";
-	std::string source_params, source_param_app_id;
-	std::string ip_add;
-	std::string xmlprc_port = "80";
-	std::string pcic_port = "50010";
+	int res = 0, loop_count_by_100 = 100;
+	char response[256] = { 0 }, err[256] = { 0 };
+	std::vector<float> ampl;
+	std::vector<float> dist;
+	std::vector<float> xyz3Dcoordinate;
+	std::string diagnosticData = "";
+	//std::string CAMERA_IP_1 = "192.168.0.69";
+	std::string CAMERA_IP_1 = "172.29.23.21";
+	std::string PCIC_PORT_NUMBER = "80";
+	std::string XMLRPC_PORT_NUMBER = "50010";
 
-	std::cout << "Enter ip address of camera: " << std::endl;
-	getline(std::cin, ip_add);
-	
-	source_params = ip_add + ":" + xmlprc_port + ":" + pcic_port;
-	source_param_app_id = source_params + ":" + "1";
+	LARGE_INTEGER frequency;        // ticks per second
+	LARGE_INTEGER t1, t2;           // ticks
+	double sumFps1 = 0, sumFps2 = 0, fps = 0;
 
-	printf("\n =======================O3D300 Sample Basic Code=========================");
-	printf("\n Connecting to camera: \n");
+	for (int i = 1; i < argc; i++)
+	{
+		std::string argument = argv[i];
+		std::string command = argument.substr(0, argument.find('='));
+		std::string cmd_value = argument.substr(argument.find('=') + 1, argument.length());
+		if (command == "--IP")
+			CAMERA_IP_1 = cmd_value;
+		else if (command == "--COUNT")
+			loop_count_by_100 = atoi(cmd_value.c_str()) / 100;
+	}
+
+	std::string SOURCE_PARAM_1 = CAMERA_IP_1 + ":" + PCIC_PORT_NUMBER + ":" + XMLRPC_PORT_NUMBER;
+
+	// get ticks per second
+	QueryPerformanceFrequency(&frequency);
+
+	printf("\n ===================================================================");
+	printf("\n Connecting to camera 1: \n");
 	// connect to camera
-	res = pmdOpen(&hnd, SOURCE_PLUGIN, source_params.c_str(), PROC_PLUGIN, PROC_PARAM);
-	
+	res = pmdOpen(&hnd, SOURCE_PLUGIN, SOURCE_PARAM_1.c_str(), PROC_PLUGIN, PROC_PARAM);
+
 	if (res != PMD_OK)
 	{
 		fprintf(stderr, "Could not connect: \n");
@@ -67,7 +70,7 @@ int main(int argc, char **argv)
 	printf("\n DONE");
 
 	printf("\n -----------------------------------------------------------------------------");
-	printf("\n Updating the framedata from camera ");
+	printf("\n Updating the framedata from camera");
 	res = pmdUpdate(hnd); // to update the camera parameter and framedata
 	if (res != PMD_OK)
 	{
@@ -94,163 +97,86 @@ int main(int argc, char **argv)
 	}
 	printf("\n DONE");
 
-	imgWidth = dd.img.numColumns;
-	imgHeight = dd.img.numRows;
-
 	printf("\n -----------------------------------------------------------------------------");
 
+	dist.resize(dd.img.numColumns * dd.img.numRows);
+	ampl.resize(dd.img.numColumns * dd.img.numRows);
+	xyz3Dcoordinate.resize(dd.img.numColumns * dd.img.numRows * 3);
 
-	dist.resize(imgWidth * imgHeight);
-	amp.resize(imgWidth * imgHeight);
-	flags.resize(imgWidth * imgHeight);
-	xyz3Dcoordinate.resize(imgHeight * imgWidth * 3); // value three is for 3 images
+	printf("\n Starting Loop for 23K resolution \n");
 
-	printf("\n Obtaining different image data from camera viz amplitude and Distance Image  \n");
+	// start timer
+	QueryPerformanceCounter(&t1);
 
-	res = pmdGetDistances(hnd, &dist[0], dist.size() * sizeof(float));
-	if (res != PMD_OK)
+	for (int i = 0; i < loop_count_by_100; i++)
 	{
-		pmdGetLastError(hnd, err, 128);
-		fprintf(stderr, "Could not get distance data: \n%s\n", err);
-		pmdClose(hnd);
-		printf("Camera Connection Closed. \n");
-		getchar();
-		return res;
-	}
-	printf("\n Middle pixel Distance value: %fm\n", dist[(imgHeight / 2) * imgWidth + imgWidth / 2]);
-
-	res = pmdGetAmplitudes(hnd, &amp[0], amp.size() * sizeof(float));
-	if (res != PMD_OK)
-	{
-		pmdGetLastError(hnd, err, 128);
-		fprintf(stderr, "Could not get amplitude data: \n%s\n", err);
-		pmdClose(hnd);
-		printf("Camera Connection Closed. \n");
-		getchar();
-		return res;
-	}
-	printf("\n Middle Amplitude: %f\n", amp[(dd.img.numRows / 2) * dd.img.numColumns + dd.img.numColumns / 2]);
-
-	res = pmdGetFlags(hnd, &flags[0], flags.size() * sizeof(float));
-	if (res != PMD_OK)
-	{
-		pmdGetLastError(hnd, err, 128);
-		fprintf(stderr, "Could not get flag data: \n%s\n", err);
-		pmdClose(hnd);
-		printf("Camera Connection Closed. \n");
-		getchar();
-		return res;
-	}
-
-	/* 3D coordinates are stored in interleved way .i.e.
-	for every pixel i
-	xcordinate value = xyz3Dcoordinate[i+0]
-	ycordinate value = xyz3Dcoordinate[i+1]
-	zcordinate value = xyz3Dcoordinate[i+2]*/
-
-	pmdGet3DCoordinates(hnd, &xyz3Dcoordinate[0], xyz3Dcoordinate.size() * sizeof(float));
-	if (res != PMD_OK)
-	{
-		pmdGetLastError(hnd, err, 128);
-		fprintf(stderr, "Could not get xyz data: \n%s\n", err);
-		pmdClose(hnd);
-		printf("Camera Connection Closed. \n");
-		getchar();
-		return res;
-	}
-
-	//calculating the mean values of X/Y/Z/ Image
-	float XSum = 0, YSum = 0, ZSum = 0;
-	float ASum = 0, DSum = 0;
-	unsigned counter = 0;
-	for (int i = 0; i < imgHeight * imgWidth; i++)
-	{
-		if (!(flags[i] & 1)) // first bit is set to 1,if pixel is invalid
+		for (int j = 0; j < 100; j++)
 		{
-			DSum += dist[i];
-			ASum += amp[i];
-			XSum += xyz3Dcoordinate[i * 3 + 0];
-			YSum += xyz3Dcoordinate[i * 3 + 1];
-			ZSum += xyz3Dcoordinate[i * 3 + 2];
-			counter++;
+			res = pmdUpdate(hnd);
+			if (res != PMD_OK)
+			{
+				printf("\n Error while updating camera \n");
+				pmdClose(hnd);
+				return PMD_RUNTIME_ERROR;
+			}
+
+			res = pmdGetDistances(hnd, &dist[0], dist.size() * sizeof(float));
+
+			if (res != PMD_OK)
+			{
+				printf("\n Error while getting distances \n");
+				pmdClose(hnd);
+				return PMD_RUNTIME_ERROR;
+			}
+
+			res = pmdGetAmplitudes(hnd, &ampl[0], ampl.size() * sizeof(float));
+
+			if (res != PMD_OK)
+			{
+				printf("\n Error while getting amplitudes \n");
+				pmdClose(hnd);
+				return PMD_RUNTIME_ERROR;
+			}
+
+			res = pmdGet3DCoordinates(hnd, &xyz3Dcoordinate[0], xyz3Dcoordinate.size() * sizeof(float));
+
+			if (res != PMD_OK)
+			{
+				printf("\n Error while getting 3D coordinates \n");
+				pmdClose(hnd);
+				return PMD_RUNTIME_ERROR;
+			}
+
 		}
+
+		// stop timer
+		QueryPerformanceCounter(&t2);
+
+		// compute the fps
+		fps = ((100.0f * (i + 1) * frequency.QuadPart) / (t2.QuadPart - t1.QuadPart));
+		sumFps1 += fps;
+		printf("Frame Rate = %f fps\n", fps);
+
 	}
-
-	float DMean = counter ? (DSum / float(counter)) : 0.f;
-	float AMean = counter ? (ASum / float(counter)) : 0.f;
-	float XMean = counter ? (XSum / float(counter)) : 0.f;
-	float YMean = counter ? (YSum / float(counter)) : 0.f;
-	float ZMean = counter ? (ZSum / float(counter)) : 0.f;
-
-	printf(" DMean = %fm \n AMean = %f \n", DMean, AMean);
-	printf(" XMean = %fm \n YMean = %fm \n ZMean = %fm ", XMean, YMean, ZMean);
-
-	printf("\n DONE");
-
+	printf("\n Finished running for 23K resolution");
 	printf("\n -----------------------------------------------------------------------------");
-	printf("\n Setting and getting parameters viz : integrationTime \n");
 
-	res = pmdSetIntegrationTime(hnd, 0, 1000);
+	printf("\n Changing Image Resolution to 352 X 264 \n");
+	command = "SetImageResolution 1";
+	res = pmdSourceCommand(hnd, response, SOURCE_CMD_BUFFER_LENGTH, command.c_str());
 	if (res != PMD_OK)
 	{
 		pmdGetLastError(hnd, err, 128);
-		fprintf(stderr, "Could not set the integration time: \n%s\n", err);
-		pmdClose(hnd);
-		printf("Camera Connection Closed. \n");
+		fprintf(stderr, "Could not enable distance image filtering:\n%s\n", err);
+		printf("Press any key to continue....");
 		getchar();
-		return res;
 	}
-
-	res = pmdGetIntegrationTime(hnd, &integrationTime, 0);
-	if (res != PMD_OK)
-	{
-		pmdGetLastError(hnd, err, 128);
-		fprintf(stderr, "Could not set the integration time:\n%s\n", err);
-		pmdClose(hnd);
-		printf("Camera Connection Closed. \n");
-		getchar();
-		return res;
-	}
-	printf("Integration Time = %d \n", integrationTime);
-	printf("\n DONE");
+	else
+		printf("\n DONE");
 
 	printf("\n -----------------------------------------------------------------------------");
-	printf("\n Closing the connection \n");
 
-	res = pmdClose(hnd);
-	if (res != PMD_OK)
-	{
-		pmdGetLastError(hnd, err, 128);
-		fprintf(stderr, "Could not close the connection %s\n", err);
-
-		return res;
-	}
-
-	printf("\n Camera closed Successfully");
-
-	printf("\n -----------------------------------------------------------------------------");
-	printf("\n---------------Connecting to camera 1 at a specific application ID------------");
-	printf("\n -----------------------------------------------------------------------------");
-
-	printf("\n Connecting to camera 1 at application ID 1 : \n");
-	// connect to camera at a specific application ID
-	// If no application ID is provided in the source param, then, SDK creates a new
-	// application. If application ID is provided, SDK will connect at the given ID.
-	// If no application is found at given ID, the camera generates xmlrpc error 
-	// resulting in pmdOpen function to fail.
-	// For this sample code to work, camera should contain an application at index 1.
-	res = pmdOpen(&hnd, SOURCE_PLUGIN, source_param_app_id.c_str(), PROC_PLUGIN, PROC_PARAM);
-	if (res != PMD_OK)
-	{
-		fprintf(stderr, "Could not connect: \n"); 
-		getchar();
-		return res;
-	}
-	printf("\n DONE");
-
-	printf("\n -----------------------------------------------------------------------------");
-	printf("\n -----------------------------------------------------------------------------");
-	printf("\n Updating the framedata from camera ");
+	printf("\n Updating the framedata from camera");
 	res = pmdUpdate(hnd); // to update the camera parameter and framedata
 	if (res != PMD_OK)
 	{
@@ -278,33 +204,85 @@ int main(int argc, char **argv)
 	printf("\n DONE");
 
 	printf("\n -----------------------------------------------------------------------------");
-	res = pmdGetIntegrationTime(hnd, &integrationTime, 0);
-	if (res != PMD_OK)
+
+	dist.clear();
+	ampl.clear();
+	xyz3Dcoordinate.clear();
+	dist.resize(dd.img.numColumns * dd.img.numRows);
+	ampl.resize(dd.img.numColumns * dd.img.numRows);
+	xyz3Dcoordinate.resize(dd.img.numColumns * dd.img.numRows * 3);
+
+	printf("\n Resolution = %d X %d \n", dd.img.numColumns, dd.img.numRows);
+	printf("\n Starting Loop for 100K resolution \n");
+	// start timer
+	QueryPerformanceCounter(&t1);
+	for (int i = 0; i < loop_count_by_100; i++)
 	{
-		pmdGetLastError(hnd, err, 128);
-		fprintf(stderr, "Could not set the integration time:\n%s\n", err);
-		pmdClose(hnd);
-		printf("Camera Connection Closed. \n");
-		getchar();
-		return res;
+		for (int j = 0; j < 100; j++)
+		{
+			res = pmdUpdate(hnd);
+			if (res != PMD_OK)
+			{
+				printf("\n Error while updating camera \n");
+				pmdClose(hnd);
+				return PMD_RUNTIME_ERROR;
+			}
+
+			res = pmdGetDistances(hnd, &dist[0], dist.size() * sizeof(float));
+
+			if (res != PMD_OK)
+			{
+				printf("\n Error while getting distances \n");
+				pmdClose(hnd);
+				return PMD_RUNTIME_ERROR;
+			}
+
+			res = pmdGetAmplitudes(hnd, &ampl[0], ampl.size() * sizeof(float));
+
+			if (res != PMD_OK)
+			{
+				printf("\n Error while getting amplitudes \n");
+				pmdClose(hnd);
+				return PMD_RUNTIME_ERROR;
+			}
+
+			res = pmdGet3DCoordinates(hnd, &xyz3Dcoordinate[0], xyz3Dcoordinate.size() * sizeof(float));
+
+			if (res != PMD_OK)
+			{
+				printf("\n Error while getting 3D coordinates \n");
+				pmdClose(hnd);
+				return PMD_RUNTIME_ERROR;
+			}
+
+		}
+		// stop timer
+		QueryPerformanceCounter(&t2);
+
+		// compute the fps
+		fps = ((100.0f * (i + 1) * frequency.QuadPart) / (t2.QuadPart - t1.QuadPart));
+		sumFps2 += fps;
+		printf("Frame Rate = %f fps\n", fps);
+
 	}
-	printf("Integration Time = %d \n", integrationTime);
-	printf("\n DONE");
-
+	printf("\n Finished running for 100K resolution");
+	printf("\n 23K resolution => Mean FPS = %f", (sumFps1 / loop_count_by_100));
+	printf("\n 100K resolution => Mean FPS = %f", (sumFps2 / loop_count_by_100));
 	printf("\n -----------------------------------------------------------------------------");
-	printf("\n Closing the connection \n");
 
+	printf("\n Closing connection 1 \n");
 	res = pmdClose(hnd);
 	if (res != PMD_OK)
 	{
 		pmdGetLastError(hnd, err, 128);
 		fprintf(stderr, "Could not close the connection %s\n", err);
-
 		return res;
 	}
 
 	printf("\n Camera closed Successfully");
+
 	printf("\n ================================================================================");
 
 	return PMD_OK;
+
 }
