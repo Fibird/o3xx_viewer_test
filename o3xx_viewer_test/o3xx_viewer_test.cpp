@@ -56,8 +56,8 @@ int main(int argc, char **argv)
 	printf("\n =======================O3D300 Sample Basic Code=========================");
 	printf("\n Connecting to camera: \n");
 	// connect to camera
-	res = pmdOpen(&hnd, SOURCE_PLUGIN, source_params.data(), PROC_PLUGIN, PROC_PARAM);
-
+	res = pmdOpen(&hnd, SOURCE_PLUGIN, source_params.c_str(), PROC_PLUGIN, PROC_PARAM);
+	
 	if (res != PMD_OK)
 	{
 		fprintf(stderr, "Could not connect: \n");
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
 	// If no application is found at given ID, the camera generates xmlrpc error 
 	// resulting in pmdOpen function to fail.
 	// For this sample code to work, camera should contain an application at index 1.
-	res = pmdOpen(&hnd, SOURCE_PLUGIN, source_param_app_id.data(), PROC_PLUGIN, PROC_PARAM);
+	res = pmdOpen(&hnd, SOURCE_PLUGIN, source_param_app_id.c_str(), PROC_PLUGIN, PROC_PARAM);
 	if (res != PMD_OK)
 	{
 		fprintf(stderr, "Could not connect: \n"); 
