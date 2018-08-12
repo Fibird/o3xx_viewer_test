@@ -46,10 +46,7 @@ int main(int argc, char **argv)
 	LARGE_INTEGER t1, t2;           // ticks
 	double sumFps1 = 0, sumFps2 = 0, fps = 0;
 
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-
+	std::cout << "Enter your camera IP address:" << std::endl;
 	getline(std::cin, CAMERA_IP);
 	std::string SOURCE_PARAM = CAMERA_IP + ":" + PCIC_PORT_NUMBER + ":" + XMLRPC_PORT_NUMBER;
 
@@ -94,6 +91,9 @@ int main(int argc, char **argv)
 	//QueryPerformanceCounter(&t1);
 	imgWidth = dd.img.numColumns;
 	imgHeight = dd.img.numRows;
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
 	cloud->width = imgHeight * imgWidth;
 	cloud->height = 1;
 	viewer->setSize(imgWidth, imgHeight);
@@ -119,20 +119,14 @@ int main(int argc, char **argv)
 		{
 			is_first = false;
 			viewer->addPointCloud<pcl::PointXYZ>(cloud, "cloud");
-			//viewer->addPointCloud<pcl::PointXYZ>(cloud, "sample cloud");
 		}
 		else
 		{
 			viewer->updatePointCloud(cloud, "cloud");
 		}
-		res = pmdGet3DCoordinates(hnd, &xyz3Dcoordinate[0], xyz3Dcoordinate.size() * sizeof(float));
-		/*if (res != PMD_OK)
-		{
-			printf("\n Error while getting 3D coordinates \n");
-			pmdClose(hnd);
-			return PMD_RUNTIME_ERROR;
-		}*/
 
+		// update cloud data
+		res = pmdGet3DCoordinates(hnd, &xyz3Dcoordinate[0], xyz3Dcoordinate.size() * sizeof(float));
 		for (size_t i = 0; i < imgHeight * imgWidth; i++)
 		{
 			cloud->points[i].x = xyz3Dcoordinate[i * 3 + 0];
