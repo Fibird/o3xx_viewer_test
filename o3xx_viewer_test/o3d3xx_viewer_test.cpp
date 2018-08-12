@@ -109,6 +109,9 @@ int main(int argc, char **argv)
 	cloud->width = imgHeight * imgWidth;
 	cloud->height = 1;
 	viewer->setSize(imgWidth, imgHeight);
+	cloud->is_dense = false;
+	cloud->points.resize(cloud->width * cloud->height);
+
 	bool is_first = true;
 	int v_pcl(0);
 	viewer->createViewPort(0., 0., 1., 1., v_pcl);
