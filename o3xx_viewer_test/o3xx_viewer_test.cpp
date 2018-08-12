@@ -12,13 +12,13 @@
 // If no application ID is provided in source params, a new application 
 // is created on connect, and deleted at disconnect.
 //#define CAMERA_IP_1 "192.168.0.69"
-#define CAMERA_IP_1 "172.29.23.21"
-
-#define PCIC_PORT_NUMBER "80"
-#define XMLRPC_PORT_NUMBER "50010"
-#define APPLICATION_ID "1"
-#define SOURCE_PARAM CAMERA_IP_1 ":" PCIC_PORT_NUMBER ":" XMLRPC_PORT_NUMBER 
-#define SOURCE_PARAM_APP_ID CAMERA_IP_1 ":" PCIC_PORT_NUMBER ":" XMLRPC_PORT_NUMBER ":" APPLICATION_ID 
+//#define CAMERA_IP_1 "172.29.23.21"
+//
+//#define PCIC_PORT_NUMBER "80"
+//#define XMLRPC_PORT_NUMBER "50010"
+//#define APPLICATION_ID "1"
+//#define SOURCE_PARAM CAMERA_IP_1 ":" PCIC_PORT_NUMBER ":" XMLRPC_PORT_NUMBER 
+//#define SOURCE_PARAM_APP_ID CAMERA_IP_1 ":" PCIC_PORT_NUMBER ":" XMLRPC_PORT_NUMBER ":" APPLICATION_ID 
 
 #define PROC_PLUGIN "O3D3xxProc"
 #define PROC_PARAM ""
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 	int imgWidth = 0;
 	char err[256] = { 0 };
 	std::string command = "";
-	std::string source_params;
+	std::string source_params, source_param_app_id;
 	std::string ip_add;
 	std::string xmlprc_port = "80";
 	std::string pcic_port = "50010";
@@ -51,6 +51,7 @@ int main(int argc, char **argv)
 	getline(std::cin, ip_add);
 	
 	source_params = ip_add + ":" + xmlprc_port + ":" + pcic_port;
+	source_param_app_id = source_params + ":" + "1";
 
 	printf("\n =======================O3D300 Sample Basic Code=========================");
 	printf("\n Connecting to camera: \n");
@@ -238,10 +239,10 @@ int main(int argc, char **argv)
 	// If no application is found at given ID, the camera generates xmlrpc error 
 	// resulting in pmdOpen function to fail.
 	// For this sample code to work, camera should contain an application at index 1.
-	res = pmdOpen(&hnd, SOURCE_PLUGIN, SOURCE_PARAM_APP_ID, PROC_PLUGIN, PROC_PARAM);
+	res = pmdOpen(&hnd, SOURCE_PLUGIN, source_param_app_id.data(), PROC_PLUGIN, PROC_PARAM);
 	if (res != PMD_OK)
 	{
-		fprintf(stderr, "Could not connect: \n");
+		fprintf(stderr, "Could not connect: \n"); 
 		getchar();
 		return res;
 	}
