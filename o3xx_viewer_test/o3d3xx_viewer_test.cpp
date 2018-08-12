@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
 	cloud->width = imgHeight * imgWidth;
 	cloud->height = 1;
-	viewer->setSize(imgWidth, imgHeight);
+	viewer->setSize(800, 600);
 	cloud->is_dense = false;
 	cloud->points.resize(cloud->width * cloud->height);
 
