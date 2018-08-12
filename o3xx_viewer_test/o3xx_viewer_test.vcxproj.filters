@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="o3xx_viewer_test.cpp">
+    <ClCompile Include="o3d3xx_viewer_test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
