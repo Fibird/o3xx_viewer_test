@@ -67,6 +67,18 @@ int main(int argc, char **argv)
 	}
 	printf("\n DONE");
 
+	res = pmdUpdate(hnd); // to update the camera parameter and framedata
+	if (res != PMD_OK)
+	{
+		pmdGetLastError(hnd, err, 256);
+		fprintf(stderr, "Could not updateData: \n%s\n", err);
+		pmdClose(hnd);
+		printf("Camera Connection Closed. \n");
+		getchar();
+		return res;
+	}
+	printf("\n DONE");
+
 	printf("\n -----------------------------------------------------------------------------");
 	printf("\n Retrieving source data description\n");
 	res = pmdGetSourceDataDescription(hnd, &dd);
