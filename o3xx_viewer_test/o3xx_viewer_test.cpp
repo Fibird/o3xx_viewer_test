@@ -1,5 +1,6 @@
 #include <vector>
 #include <string>
+#include <iostream>
 #include <sstream>
 #include <pmdsdk2.h>
 
@@ -41,11 +42,20 @@ int main(int argc, char **argv)
 	int imgWidth = 0;
 	char err[256] = { 0 };
 	std::string command = "";
+	std::string source_params;
+	std::string ip_add;
+	std::string xmlprc_port = "80";
+	std::string pcic_port = "50010";
+
+	std::cout << "Enter ip address of camera: " << std::endl;
+	getline(std::cin, ip_add);
+	
+	source_params = ip_add + ":" + xmlprc_port + ":" + pcic_port;
 
 	printf("\n =======================O3D300 Sample Basic Code=========================");
 	printf("\n Connecting to camera: \n");
 	// connect to camera
-	res = pmdOpen(&hnd, SOURCE_PLUGIN, SOURCE_PARAM, PROC_PLUGIN, PROC_PARAM);
+	res = pmdOpen(&hnd, SOURCE_PLUGIN, source_params.data(), PROC_PLUGIN, PROC_PARAM);
 
 	if (res != PMD_OK)
 	{
