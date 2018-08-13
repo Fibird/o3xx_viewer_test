@@ -49,19 +49,23 @@ int main(int argc, char **argv)
 	std::cout << "Enter your camera IP address:" << std::endl;
 	getline(std::cin, CAMERA_IP);
 	std::string SOURCE_PARAM = CAMERA_IP + ":" + PCIC_PORT_NUMBER + ":" + XMLRPC_PORT_NUMBER;
-
+	
 	// get ticks per second
 	QueryPerformanceFrequency(&frequency);
 
 	
 	printf("\n ===================================================================");
-	printf("\n Connecting to camera \n");
+	printf("\n Connecting to camera");
+	std::cout << " whose ip is " << SOURCE_PARAM << std::endl;
 	// connect to camera
 	res = pmdOpen(&hnd, SOURCE_PLUGIN, SOURCE_PARAM.c_str(), PROC_PLUGIN, PROC_PARAM);
 
 	if (res != PMD_OK)
 	{
-		fprintf(stderr, "Could not connect: \n");
+		char err[128];
+		pmdGetLastError(hnd, err, 128);
+		fprintf(stderr, "Could not connect: %s\n", err);
+		//fprintf(stderr, "Could not connect: \n");
 		getchar();
 		return res;
 	}
